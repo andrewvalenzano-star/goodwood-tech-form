@@ -326,43 +326,117 @@
     return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
   }
 
+  // One ID per form, so tapping Submit again after a failed send can't create a second row.
+  var pendingId = null;
+
+  function submissionIdFor(kartNo) {
+    if (!pendingId || pendingId.kartNo !== kartNo) {
+      pendingId = { kartNo: kartNo, id: makeSubmissionId(kartNo, new Date()) };
+    }
+    return pendingId.id;
+  }
+
+  // Phone photos are 3–12 MB; shrink to something that uploads on one bar of signal.
+  var PHOTO_MAX_PX = 1600;
+
+  function compressPhoto(file) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () {
+        var scale = Math.min(1, PHOTO_MAX_PX / Math.max(img.naturalWidth, img.naturalHeight));
+        var canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.naturalWidth * scale);
+        canvas.height = Math.round(img.naturalHeight * scale);
+        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(url);
+        resolve(base64File(canvas.toDataURL("image/jpeg", 0.8)));
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error("Couldn't read photo")); };
+      img.src = url;
+    });
+  }
+
+  function base64File(dataUrl) {
+    var comma = dataUrl.indexOf(",");
+    return { mimeType: dataUrl.slice(5, dataUrl.indexOf(";")), data: dataUrl.slice(comma + 1) };
+  }
+
+  function checkValue(item) {
+    var picked = form.querySelector('input[name="chk_' + item.id + '"]:checked');
+    if (!picked) return "";
+    return picked.value === "na" ? "N/A" : "Checked";
+  }
+
+  // Keys become Sheet column headers, in this order.
   function buildPayload() {
     var v = function (id) { return $(id).value.trim(); };
+    var up = function (id) { return v(id).toUpperCase(); };
     var now = new Date();
     var twoEngines = !$("engine2Wrap").hidden;
-    var checks = {};
+
+    var fields = {
+      "Event Date": localDate(now),
+      "Driver Name": v("driverName"),
+      "Class": v("kartClass"),
+      "Kart No": v("kartNo"),
+      "Chassis Make": v("chassisBrand") === "Other" ? v("chassisOther") : v("chassisBrand"),
+      "Chassis Model": v("chassisModel"),
+      "Chassis Serial": up("chassisSerial"),
+      "Engine 1 Make/Model": v("engine1Model"),
+      "Engine 1 Serial": up("engine1Serial"),
+      "Engine 2 Make/Model": twoEngines ? v("engine2Model") : "",
+      "Engine 2 Serial": twoEngines ? up("engine2Serial") : "",
+      "Front Tire 1": up("tireFront1"),
+      "Front Tire 2": up("tireFront2"),
+      "Rear Tire 1": up("tireRear1"),
+      "Rear Tire 2": up("tireRear2"),
+    };
     CFG.checklist.forEach(function (g) {
-      g.items.forEach(function (item) {
-        var radio = form.querySelector('input[name="chk_' + item.id + '"]:checked');
-        if (radio) checks[item.id] = radio.value === "na" ? "N/A" : "Checked";
-        else checks[item.id] = form.querySelector('input[name="chk_' + item.id + '"]').checked ? "Checked" : "";
-      });
+      g.items.forEach(function (item) { fields[item.label] = checkValue(item); });
     });
+    fields["Declaration Agreed"] = $("agree").checked ? "Yes" : "No";
+    fields["Signed By"] = v("signerName");
+    fields["Filled In (phone time)"] = localDate(now) + " " + now.toTimeString().slice(0, 8);
 
     return {
-      submissionId: makeSubmissionId(v("kartNo"), now),
-      submittedAt: now.toISOString(),
-      eventDate: localDate(now),
-      driverName: v("driverName"),
-      kartClass: v("kartClass"),
-      kartNo: v("kartNo"),
-      chassisMake: v("chassisBrand") === "Other" ? v("chassisOther") : v("chassisBrand"),
-      chassisModel: v("chassisModel"),
-      chassisSerial: v("chassisSerial").toUpperCase(),
-      engine1Model: v("engine1Model"),
-      engine1Serial: v("engine1Serial").toUpperCase(),
-      engine2Model: twoEngines ? v("engine2Model") : "",
-      engine2Serial: twoEngines ? v("engine2Serial").toUpperCase() : "",
-      tireFront1: v("tireFront1").toUpperCase(),
-      tireFront2: v("tireFront2").toUpperCase(),
-      tireRear1: v("tireRear1").toUpperCase(),
-      tireRear2: v("tireRear2").toUpperCase(),
-      checks: checks,
-      declarationAgreed: $("agree").checked,
-      signerName: v("signerName"),
-      signaturePng: sig.toDataURL(),
+      submissionId: submissionIdFor(v("kartNo")),
       honeypot: form.elements.website.value,
+      fields: fields,
+      files: {
+        "Chassis Serial Photo": photos.chassisSerial || null,
+        "Engine 1 Serial Photo": photos.engine1Serial || null,
+        "Engine 2 Serial Photo": twoEngines ? photos.engine2Serial || null : null,
+        "Signature": sig.toDataURL(),
+      },
     };
+  }
+
+  // Replaces File objects / data URLs in payload.files with { mimeType, data }.
+  function encodeFiles(payload) {
+    var labels = Object.keys(payload.files);
+    return Promise.all(labels.map(function (label) {
+      var f = payload.files[label];
+      if (!f) return null;
+      return typeof f === "string" ? base64File(f) : compressPhoto(f);
+    })).then(function (encoded) {
+      labels.forEach(function (label, i) { payload.files[label] = encoded[i]; });
+      return payload;
+    });
+  }
+
+  function send(payload) {
+    // text/plain keeps this a "simple" request, which Apps Script accepts from another site.
+    return fetch(CFG.endpointUrl, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(payload),
+    })
+      .then(function (res) { return res.json(); })
+      .then(function (body) {
+        if (!body.ok) throw new Error(body.error || "Server error");
+        return body;
+      });
   }
 
   form.addEventListener("submit", function (e) {
@@ -378,16 +452,35 @@
     err.hidden = true;
 
     var payload = buildPayload();
-    // Sending to the Google Sheet (and uploading photos) comes in the next build pass.
-    if (!CFG.endpointUrl) console.log("Demo mode — payload:", payload, "photos:", Object.keys(photos));
+    if (!CFG.endpointUrl) {
+      console.log("Demo mode — payload:", payload);
+      showConfirmation(payload);
+      return;
+    }
 
-    showConfirmation(payload);
+    var btn = $("submitBtn");
+    btn.disabled = true;
+    btn.textContent = "Sending…";
+    encodeFiles(payload)
+      .then(send)
+      .then(function () { showConfirmation(payload); })
+      .catch(function (ex) {
+        console.error(ex);
+        err.textContent = "Couldn't send your form. Check your signal and tap Submit again — your answers are still here.";
+        err.hidden = false;
+        err.scrollIntoView({ behavior: "smooth", block: "center" });
+      })
+      .then(function () {
+        btn.disabled = false;
+        btn.textContent = "Submit tech form";
+      });
   });
 
   function showConfirmation(p) {
     clearDraft();
+    pendingId = null;
     $("confirmId").textContent = p.submissionId;
-    $("confirmSummary").textContent = p.driverName + " · #" + p.kartNo + " · " + p.kartClass;
+    $("confirmSummary").textContent = p.fields["Driver Name"] + " · #" + p.fields["Kart No"] + " · " + p.fields["Class"];
     form.hidden = true;
     $("demo-banner").hidden = true;
     $("confirmation").hidden = false;
