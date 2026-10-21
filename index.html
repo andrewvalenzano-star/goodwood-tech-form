@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#14213d">
+  <title>Goodwood Tech Form</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Goodwood Kartways</h1>
+    <p>Self Technical Declaration</p>
+  </header>
+
+  <main>
+    <div id="demo-banner" class="banner" hidden>
+      Demo mode: submissions are not sent anywhere yet.
+    </div>
+
+    <form id="tech-form" novalidate autocomplete="on">
+      <p class="instruction">This form must be completed in full at the time and to the personnel announced at the event.</p>
+
+      <!-- Honeypot: humans never see this; bots fill it in. -->
+      <div class="hp" aria-hidden="true">
+        <label>Leave this empty <input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+      </div>
+
+      <section class="card">
+        <h2>Driver &amp; Kart</h2>
+
+        <div class="field">
+          <label for="driverName">Driver name</label>
+          <input id="driverName" name="driverName" type="text" required autocomplete="name">
+        </div>
+
+        <div class="row">
+          <div class="field grow">
+            <label for="kartClass">Class</label>
+            <select id="kartClass" name="kartClass" required>
+              <option value="">Choose…</option>
+            </select>
+          </div>
+          <div class="field narrow">
+            <label for="kartNo">Kart No</label>
+            <input id="kartNo" name="kartNo" type="text" inputmode="numeric" required>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="chassisBrand">Chassis make</label>
+          <select id="chassisBrand" name="chassisBrand" required>
+            <option value="">Choose…</option>
+          </select>
+        </div>
+        <div class="field" id="chassisOtherWrap" hidden>
+          <label for="chassisOther">Chassis make (other)</label>
+          <input id="chassisOther" name="chassisOther" type="text">
+        </div>
+        <div class="field">
+          <label for="chassisModel">Chassis model</label>
+          <input id="chassisModel" name="chassisModel" type="text">
+        </div>
+        <div class="field serial" data-serial="chassisSerial">
+          <label for="chassisSerial">Chassis serial no</label>
+          <input id="chassisSerial" name="chassisSerial" type="text" autocapitalize="characters" required>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Engines</h2>
+        <div class="field">
+          <label for="engine1Model">Engine 1 make/model</label>
+          <input id="engine1Model" name="engine1Model" type="text" required>
+        </div>
+        <div class="field serial" data-serial="engine1Serial">
+          <label for="engine1Serial">Engine 1 serial no</label>
+          <input id="engine1Serial" name="engine1Serial" type="text" autocapitalize="characters" required>
+        </div>
+
+        <div id="engine2Wrap" hidden>
+          <p class="note">ROK classes only</p>
+          <div class="field">
+            <label for="engine2Model">Engine 2 make/model</label>
+            <input id="engine2Model" name="engine2Model" type="text">
+          </div>
+          <div class="field serial" data-serial="engine2Serial">
+            <label for="engine2Serial">Engine 2 serial no</label>
+            <input id="engine2Serial" name="engine2Serial" type="text" autocapitalize="characters">
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Tires</h2>
+        <h3>Front</h3>
+        <div class="field tire">
+          <label for="tireFront1">Front tire 1 serial</label>
+          <input id="tireFront1" name="tireFront1" type="text" autocapitalize="characters" required>
+        </div>
+        <div class="field tire">
+          <label for="tireFront2">Front tire 2 serial</label>
+          <input id="tireFront2" name="tireFront2" type="text" autocapitalize="characters" required>
+        </div>
+        <h3>Rear</h3>
+        <div class="field tire">
+          <label for="tireRear1">Rear tire 1 serial</label>
+          <input id="tireRear1" name="tireRear1" type="text" autocapitalize="characters" required>
+        </div>
+        <div class="field tire">
+          <label for="tireRear2">Rear tire 2 serial</label>
+          <input id="tireRear2" name="tireRear2" type="text" autocapitalize="characters" required>
+        </div>
+      </section>
+
+      <div id="checklist"></div>
+
+      <section class="card">
+        <h2>Competitor's Declaration</h2>
+        <blockquote id="declarationText"></blockquote>
+        <label class="check" id="agreeWrap">
+          <input type="checkbox" id="agree" name="agree" required>
+          <span>I agree to the declaration above</span>
+        </label>
+
+        <div class="field">
+          <label for="signerName">Driver/Mechanic name</label>
+          <input id="signerName" name="signerName" type="text" required autocomplete="name">
+        </div>
+
+        <div class="field" id="signatureField">
+          <label>Driver/Mechanic signature</label>
+          <div class="sigpad">
+            <canvas id="signature" aria-label="Sign here with your finger"></canvas>
+            <span class="sigpad-hint">Sign here with your finger</span>
+          </div>
+          <button type="button" class="btn-link" id="clearSignature">Clear signature</button>
+        </div>
+      </section>
+
+      <p id="form-error" class="form-error" role="alert" hidden></p>
+      <button type="submit" class="btn-primary" id="submitBtn">Submit tech form</button>
+    </form>
+
+    <section id="confirmation" class="card confirm" hidden>
+      <h2>Submitted ✓</h2>
+      <p>Your confirmation number:</p>
+      <p class="confirm-id" id="confirmId"></p>
+      <p class="confirm-sub" id="confirmSummary"></p>
+      <p>Show this to tech if asked.</p>
+      <button type="button" class="btn-secondary" id="newForm">Start another form</button>
+    </section>
+  </main>
+
+  <script src="js/config.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
