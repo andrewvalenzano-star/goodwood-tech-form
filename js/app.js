@@ -70,9 +70,8 @@
 
   function syncClassRules() {
     var twoEngines = CFG.twoEngineClasses.indexOf($("kartClass").value) !== -1;
+    // Engine 2 is shown for ROK classes but never required.
     $("engine2Wrap").hidden = !twoEngines;
-    $("engine2Model").required = twoEngines;
-    $("engine2Serial").required = twoEngines;
   }
 
   function syncChassisOther() {

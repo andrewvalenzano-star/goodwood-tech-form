@@ -72,6 +72,7 @@ main {
 
 .field { margin-bottom: 14px; }
 .field > label { display: block; font-weight: 600; margin-bottom: 4px; }
+.optional { font-weight: 400; color: var(--muted); }
 
 .row { display: flex; gap: 12px; }
 .grow { flex: 1; min-width: 0; }

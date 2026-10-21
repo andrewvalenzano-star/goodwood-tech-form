@@ -30,8 +30,8 @@
 |---|---|---|
 | Engine 1 Make/Model | **text field** (same reasoning as chassis — class usually dictates the engine anyway; flag for Andrew/Dan to veto) | required |
 | Engine 1 Serial No | text + camera/OCR | photo attach; formats not standardized — human-verified pre-fill only |
-| Engine 2 Make/Model | text | **ROK CLASSES ONLY** — show only when the selected class is a ROK class (Mini Rok, VLR Junior, VLR Senior, VLR Masters — confirm VLR counts for this rule with Dan) |
-| Engine 2 Serial No | text + camera/OCR | ROK classes only; photo attach |
+| Engine 2 Make/Model | text | **Optional** (Andrew, Oct 21). **ROK CLASSES ONLY** — show only when the selected class is a ROK class (Mini Rok, VLR Junior, VLR Senior, VLR Masters — confirm VLR counts for this rule with Dan) |
+| Engine 2 Serial No | text + camera/OCR | **Optional.** ROK classes only; photo attach |
 
 ### Tires (front pair, rear pair — as laid out on the paper form)
 | Field | Type | Notes |
