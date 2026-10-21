@@ -17,3 +17,8 @@ Plain HTML/CSS/JS, no build step. Open `index.html` in a browser to try it.
 - [ ] Pass 3 — photo upload to Drive
 - [ ] Pass 4 — tire barcode scanning, OCR pre-fill for chassis/engine serials
 - [ ] Pass 5 — offline queue, submitter PDF download
+
+## Assets
+
+- `img/logo.png`, `img/colourblocks.png` — from goodwoodkartways.com (property of Goodwood Kartways). The `img/*icon*.png` and `img/favicon.png` files are cropped from the logo's "G" mark.
+- `fonts/racing-sans-one-latin.woff2` — Racing Sans One (the site's heading font), SIL Open Font License, self-hosted so it works offline.
