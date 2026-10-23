@@ -2,7 +2,6 @@
   "use strict";
 
   var CFG = window.TECH_CONFIG;
-  var DRAFT_KEY = "techFormDraft.v1";
 
   var form = document.getElementById("tech-form");
   var $ = function (id) { return document.getElementById(id); };
@@ -83,11 +82,17 @@
   $("kartClass").addEventListener("change", syncClassRules);
   $("chassisBrand").addEventListener("change", syncChassisOther);
 
-  // ---------- Serial photo capture ----------
+  // ---------- Serial photo capture + reading ----------
+
+  var BTN_IDLE = "📷 Scan";
+  var BTN_AGAIN = "📷 Retake";
 
   document.querySelectorAll(".serial").forEach(function (field) {
     var name = field.dataset.serial;
+    var kind = field.classList.contains("tire") ? "tire" : "serial";
     var input = field.querySelector("input");
+    var autoFilled = null; // last value we put in the box, so a re-scan can replace it
+    var readToken = 0;     // ignores a slow read if a newer photo was taken meanwhile
 
     var row = document.createElement("div");
     row.className = "serial-row";
@@ -103,11 +108,16 @@
     var btn = document.createElement("button");
     btn.type = "button";
     btn.className = "btn-photo";
-    btn.textContent = "📷 Photo";
-    btn.setAttribute("aria-label", "Take a photo of the serial plate");
+    btn.textContent = BTN_IDLE;
+    btn.setAttribute("aria-label", kind === "tire" ? "Take a photo of the tire sticker" : "Take a photo of the serial plate");
     btn.addEventListener("click", function () { fileInput.click(); });
     row.appendChild(btn);
     field.appendChild(fileInput);
+
+    var status = document.createElement("p");
+    status.className = "read-status";
+    status.hidden = true;
+    field.appendChild(status);
 
     var preview = document.createElement("div");
     preview.className = "photo-preview";
@@ -115,21 +125,79 @@
     preview.innerHTML = '<img alt="Serial photo"><button type="button" class="btn-link">Remove photo</button>';
     field.appendChild(preview);
 
+    function setStatus(cls, text) {
+      status.className = "read-status " + cls;
+      status.textContent = text;
+      status.hidden = false;
+    }
+
+    function fill(value) {
+      input.value = value;
+      autoFilled = value;
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.dispatchEvent(new Event("blur"));
+    }
+
     fileInput.addEventListener("change", function () {
       var file = fileInput.files && fileInput.files[0];
+      fileInput.value = "";
       if (!file) return;
       photos[name] = file;
       preview.querySelector("img").src = URL.createObjectURL(file);
       preview.hidden = false;
-      btn.textContent = "📷 Retake";
-      fileInput.value = "";
+      btn.textContent = BTN_AGAIN;
+
+      var token = ++readToken;
+      setStatus("busy", kind === "tire" ? "Reading barcode…" : "Reading serial…");
+      window.SerialReader.read(file, kind)
+        .then(function (result) {
+          if (token !== readToken) return;
+          if (!result) {
+            setStatus("fail", "Couldn't read it from the photo — please type it in. The photo is still saved.");
+            return;
+          }
+          var current = input.value.trim().toUpperCase();
+          if (!current || current === autoFilled || current === result.value) {
+            fill(result.value);
+            setStatus("ok", (result.source === "barcode" ? "Read from barcode" : "Read from photo") + " — check it matches.");
+          } else {
+            // Don't overwrite something the person typed; offer it instead.
+            status.className = "read-status ok";
+            status.textContent = "Photo reads " + result.value + ". ";
+            var use = document.createElement("button");
+            use.type = "button";
+            use.className = "btn-link";
+            use.textContent = "Use this";
+            use.addEventListener("click", function () {
+              fill(result.value);
+              setStatus("ok", "Read from photo — check it matches.");
+            });
+            status.appendChild(use);
+            status.hidden = false;
+          }
+        })
+        .catch(function (e) {
+          if (token !== readToken) return;
+          console.error(e);
+          setStatus("fail", "Couldn't read it (no signal?) — please type it in. The photo is still saved.");
+        });
     });
 
     preview.querySelector("button").addEventListener("click", function () {
+      readToken++;
       delete photos[name];
       preview.hidden = true;
-      btn.textContent = "📷 Photo";
+      status.hidden = true;
+      btn.textContent = BTN_IDLE;
     });
+
+    field.resetSerial = function () {
+      readToken++;
+      autoFilled = null;
+      preview.hidden = true;
+      status.hidden = true;
+      btn.textContent = BTN_IDLE;
+    };
   });
 
   // ---------- Tire serial soft-check ----------
@@ -139,7 +207,7 @@
     warn.className = "hint-warn";
     warn.hidden = true;
     warn.textContent = "Doesn't look like a usual tire serial (V + 8 digits). Double-check it — you can still submit.";
-    input.parentNode.appendChild(warn);
+    input.closest(".field").appendChild(warn);
 
     function check() {
       var v = input.value.trim().toUpperCase();
@@ -234,40 +302,27 @@
 
   $("clearSignature").addEventListener("click", sig.clear);
 
-  // ---------- Draft autosave (text + ticks only; photos and signature are not kept) ----------
+  // ---------- Always start blank ----------
 
-  function saveDraft() {
-    var data = {};
-    Array.prototype.forEach.call(form.elements, function (el) {
-      if (!el.name || el.name === "website" || el.type === "file") return;
-      if (el.type === "checkbox") data[el.name] = el.checked;
-      else if (el.type === "radio") { if (el.checked) data[el.name] = el.value; }
-      else data[el.name] = el.value;
-    });
-    try { localStorage.setItem(DRAFT_KEY, JSON.stringify(data)); } catch (e) { /* storage unavailable */ }
+  // Earlier versions saved a draft on the phone; forget it.
+  try { localStorage.removeItem("techFormDraft.v1"); } catch (e) { /* storage unavailable */ }
+
+  function resetForm() {
+    form.reset();
+    sig.clear();
+    photos = {};
+    pendingId = null;
+    document.querySelectorAll(".serial").forEach(function (f) { f.resetSerial(); });
+    document.querySelectorAll(".hint-warn").forEach(function (w) { w.hidden = true; });
+    form.querySelectorAll(".invalid").forEach(function (n) { n.classList.remove("invalid"); });
+    $("form-error").hidden = true;
+    syncClassRules();
+    syncChassisOther();
   }
 
-  function loadDraft() {
-    var data;
-    try { data = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null"); } catch (e) { data = null; }
-    if (!data) return;
-    Array.prototype.forEach.call(form.elements, function (el) {
-      if (!(el.name in data)) return;
-      if (el.type === "checkbox") el.checked = !!data[el.name];
-      else if (el.type === "radio") el.checked = data[el.name] === el.value;
-      else if (el.type !== "file") el.value = data[el.name];
-    });
-  }
-
-  function clearDraft() {
-    try { localStorage.removeItem(DRAFT_KEY); } catch (e) { /* storage unavailable */ }
-  }
-
-  loadDraft();
-  syncClassRules();
-  syncChassisOther();
-  form.addEventListener("input", saveDraft);
-  form.addEventListener("change", saveDraft);
+  // Some browsers restore typed values on reload or Back; wipe them.
+  window.addEventListener("pageshow", function (e) { if (e.persisted) resetForm(); });
+  resetForm();
 
   // ---------- Validation ----------
 
@@ -407,6 +462,10 @@
         "Chassis Serial Photo": photos.chassisSerial || null,
         "Engine 1 Serial Photo": photos.engine1Serial || null,
         "Engine 2 Serial Photo": twoEngines ? photos.engine2Serial || null : null,
+        "Front Tire 1 Photo": photos.tireFront1 || null,
+        "Front Tire 2 Photo": photos.tireFront2 || null,
+        "Rear Tire 1 Photo": photos.tireRear1 || null,
+        "Rear Tire 2 Photo": photos.tireRear2 || null,
         "Signature": sig.toDataURL(),
       },
     };
@@ -477,7 +536,6 @@
   });
 
   function showConfirmation(p) {
-    clearDraft();
     pendingId = null;
     $("confirmId").textContent = p.submissionId;
     $("confirmSummary").textContent = p.fields["Driver Name"] + " · #" + p.fields["Kart No"] + " · " + p.fields["Class"];
@@ -488,14 +546,7 @@
   }
 
   $("newForm").addEventListener("click", function () {
-    form.reset();
-    sig.clear();
-    photos = {};
-    document.querySelectorAll(".photo-preview").forEach(function (p) { p.hidden = true; });
-    document.querySelectorAll(".btn-photo").forEach(function (b) { b.textContent = "📷 Photo"; });
-    document.querySelectorAll(".hint-warn").forEach(function (w) { w.hidden = true; });
-    syncClassRules();
-    syncChassisOther();
+    resetForm();
     $("confirmation").hidden = true;
     form.hidden = false;
     sig.resize();

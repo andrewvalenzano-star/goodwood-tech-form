@@ -24,7 +24,7 @@
       Demo mode: submissions are not sent anywhere yet.
     </div>
 
-    <form id="tech-form" novalidate autocomplete="on">
+    <form id="tech-form" novalidate autocomplete="off">
       <p class="instruction">This form must be completed in full at the time and to the personnel announced at the event.</p>
 
       <!-- Honeypot: humans never see this; bots fill it in. -->
@@ -37,7 +37,7 @@
 
         <div class="field">
           <label for="driverName">Driver name</label>
-          <input id="driverName" name="driverName" type="text" required autocomplete="name">
+          <input id="driverName" name="driverName" type="text" required autocomplete="off">
         </div>
 
         <div class="row">
@@ -100,20 +100,20 @@
       <section class="card">
         <h2>Tires</h2>
         <h3>Front</h3>
-        <div class="field tire">
+        <div class="field tire serial" data-serial="tireFront1">
           <label for="tireFront1">Front tire 1 serial</label>
           <input id="tireFront1" name="tireFront1" type="text" autocapitalize="characters" required>
         </div>
-        <div class="field tire">
+        <div class="field tire serial" data-serial="tireFront2">
           <label for="tireFront2">Front tire 2 serial</label>
           <input id="tireFront2" name="tireFront2" type="text" autocapitalize="characters" required>
         </div>
         <h3>Rear</h3>
-        <div class="field tire">
+        <div class="field tire serial" data-serial="tireRear1">
           <label for="tireRear1">Rear tire 1 serial</label>
           <input id="tireRear1" name="tireRear1" type="text" autocapitalize="characters" required>
         </div>
-        <div class="field tire">
+        <div class="field tire serial" data-serial="tireRear2">
           <label for="tireRear2">Rear tire 2 serial</label>
           <input id="tireRear2" name="tireRear2" type="text" autocapitalize="characters" required>
         </div>
@@ -131,7 +131,7 @@
 
         <div class="field">
           <label for="signerName">Driver/Mechanic name</label>
-          <input id="signerName" name="signerName" type="text" required autocomplete="name">
+          <input id="signerName" name="signerName" type="text" required autocomplete="off">
         </div>
 
         <div class="field" id="signatureField">
@@ -159,6 +159,7 @@
   </main>
 
   <script src="js/config.js"></script>
+  <script src="js/reader.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

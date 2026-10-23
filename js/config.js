@@ -4,7 +4,7 @@ window.TECH_CONFIG = {
   // Apps Script web-app URL. Empty = demo mode (nothing is sent anywhere).
   // When moving to the Goodwood Kartways Google account, redeploy the script
   // there and paste the new URL here. The form's own URL / QR code stays the same.
-  endpointUrl: "",
+  endpointUrl: "https://script.google.com/macros/s/AKfycbwZ_Yf1rdaxT-p8lv1Atmreruyu_522-Brn1AZNAQOCtH5I-JnIxbkRMgl0fiO1lNKOQQ/exec",
 
   // From the 2026 Goodwood Kartways Race Entry Form, plus T4.
   classes: [

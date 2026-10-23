@@ -12,6 +12,7 @@
 - **Reviewer:** Dan (track operator). Reads the Sheet; may filter by event date and class.
 - **Flow:** open link (or scan QR code posted at registration/tech) → fill form → photograph serial plates (optional but encouraged) → complete the competitor checks → declaration + signature → submit. If offline, the form queues on the phone and auto-sends when signal returns.
 - **Confirmation:** on-screen success with a submission ID (e.g., date + kart number), so tech can ask "what's your confirmation?" at the kart.
+- The form starts completely blank every time it's opened — nothing is remembered on the phone (Andrew, Oct 23).
 - The paper form's instruction carries over: *"This form must be completed in full at the time and to the personnel announced at the event."*
 
 ## 2. Form fields (per the actual 2026 TRAK form)
@@ -84,7 +85,7 @@ Each item is a checkbox the submitter must check to submit. The criterion text f
 ## 5. Serial capture: barcode first for tires, OCR assist for the rest
 
 ### Tires — barcode scanning
-- Each tire field gets a **Scan** button → live camera view → point at the sticker → the barcode decodes and fills the field. Fast and effectively error-free compared to typing 9 characters off a curved sticker.
+- Each tire field gets a **Scan** button → phone camera takes a photo of the sticker → the barcode decodes and fills the field; if no barcode is found, text recognition looks for the printed `V########` (Andrew, Oct 23: camera + OCR for tires too). Fast and effectively error-free compared to typing 9 characters off a curved sticker.
 - Implementation: in-browser barcode decoding (ZXing-JS works everywhere; the native BarcodeDetector API can be used where the browser supports it, with ZXing as fallback). No app install needed.
 - The scan also keeps the captured frame/photo with the submission as backup.
 - Typed entry and OCR of the printed digits remain as fallbacks if a sticker is damaged.

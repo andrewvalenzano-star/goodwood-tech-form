@@ -136,7 +136,7 @@ input:focus, select:focus { outline: 3px solid var(--red); outline-offset: 1px; 
 .serial-row input { flex: 1; min-width: 0; }
 .btn-photo {
   flex: none;
-  min-width: var(--tap);
+  width: 7.4em;
   min-height: var(--tap);
   border: 2px solid var(--brand);
   border-radius: 8px;
@@ -151,6 +151,12 @@ input:focus, select:focus { outline: 3px solid var(--red); outline-offset: 1px; 
 .photo-preview { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
 .photo-preview img { width: 72px; height: 72px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); }
 .photo-preview button { font-size: 0.9rem; }
+
+.read-status { margin: 6px 0 0; font-size: 0.9rem; font-weight: 600; }
+.read-status.busy { color: var(--muted); }
+.read-status.ok { color: var(--ok); }
+.read-status.fail { color: var(--warn); }
+.read-status .btn-link { padding: 0; font-weight: 700; }
 
 .hint-warn {
   margin: 6px 0 0;
