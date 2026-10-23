@@ -453,8 +453,8 @@
     btn.disabled = true;
     btn.textContent = "Sending…";
     send(payload)
-      .then(function () { showConfirmation(payload); })
-      .catch(function (ex) {
+      // Second argument, not .catch: only a failed send may show "couldn't send".
+      .then(function () { showConfirmation(payload); }, function (ex) {
         console.error(ex);
         err.textContent = "Couldn't send your form. Check your signal and tap Submit again — your answers are still here.";
         err.hidden = false;
@@ -469,7 +469,20 @@
   var lastSubmission = null; // kept only for the PDF button; gone when the page closes
   var pdfFile = null;
 
+  function pdfFailed(ex) {
+    console.error(ex);
+    $("pdfError").textContent = "Couldn't make the PDF (no signal?). Tap the button to try again — your form was still submitted.";
+    $("pdfError").hidden = false;
+    $("downloadPdf").textContent = "Try PDF again";
+    $("downloadPdf").disabled = false;
+  }
+
+  // A PDF problem must never get in the way of the confirmation screen.
   function preparePdf() {
+    try { startPdf(); } catch (ex) { pdfFailed(ex); }
+  }
+
+  function startPdf() {
     var btn = $("downloadPdf");
     var sub = lastSubmission;
     pdfFile = null;
@@ -482,13 +495,7 @@
         pdfFile = file;
         btn.textContent = "Download PDF copy";
       })
-      .catch(function (ex) {
-        console.error(ex);
-        $("pdfError").textContent = "Couldn't make the PDF (no signal?). Tap the button to try again — your form was still submitted.";
-        $("pdfError").hidden = false;
-        btn.textContent = "Try PDF again";
-      })
-      .then(function () { btn.disabled = false; });
+      .then(function () { btn.disabled = false; }, pdfFailed);
   }
 
   function showConfirmation(p) {

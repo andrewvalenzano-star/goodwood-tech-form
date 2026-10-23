@@ -4,6 +4,8 @@ Phone-friendly replacement for the paper TRAK Self Technical Declaration. See `S
 
 Plain HTML/CSS/JS, no build step. Open `index.html` in a browser to try it.
 
+**When releasing a change:** bump the `?v=` value on the CSS/JS links in `index.html` (all five, same value). GitHub Pages lets phones cache each file for 10 minutes, and without the bump a phone can mix old and new files.
+
 ## Where things live
 
 - `js/config.js` — class list, chassis brands, ROK (two-engine) classes, checklist wording, declaration text, and the backend URL. Season-to-season edits happen here.
