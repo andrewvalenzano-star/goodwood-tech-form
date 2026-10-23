@@ -6,9 +6,6 @@
   var form = document.getElementById("tech-form");
   var $ = function (id) { return document.getElementById(id); };
 
-  // Photos live in memory only (keyed by serial field name) until submit.
-  var photos = {};
-
   // ---------- Build the dynamic parts of the form from config ----------
 
   function fillSelect(select, values) {
@@ -82,13 +79,10 @@
   $("kartClass").addEventListener("change", syncClassRules);
   $("chassisBrand").addEventListener("change", syncChassisOther);
 
-  // ---------- Serial photo capture + reading ----------
-
-  var BTN_IDLE = "📷 Scan";
-  var BTN_AGAIN = "📷 Retake";
+  // ---------- Serial scanning ----------
+  // The photo is only used to read the serial on the phone. It is never uploaded or kept.
 
   document.querySelectorAll(".serial").forEach(function (field) {
-    var name = field.dataset.serial;
     var kind = field.classList.contains("tire") ? "tire" : "serial";
     var input = field.querySelector("input");
     var autoFilled = null; // last value we put in the box, so a re-scan can replace it
@@ -108,7 +102,7 @@
     var btn = document.createElement("button");
     btn.type = "button";
     btn.className = "btn-photo";
-    btn.textContent = BTN_IDLE;
+    btn.textContent = "📷 Scan";
     btn.setAttribute("aria-label", kind === "tire" ? "Take a photo of the tire sticker" : "Take a photo of the serial plate");
     btn.addEventListener("click", function () { fileInput.click(); });
     row.appendChild(btn);
@@ -119,11 +113,6 @@
     status.hidden = true;
     field.appendChild(status);
 
-    var preview = document.createElement("div");
-    preview.className = "photo-preview";
-    preview.hidden = true;
-    preview.innerHTML = '<img alt="Serial photo"><button type="button" class="btn-link">Remove photo</button>';
-    field.appendChild(preview);
 
     function setStatus(cls, text) {
       status.className = "read-status " + cls;
@@ -142,10 +131,6 @@
       var file = fileInput.files && fileInput.files[0];
       fileInput.value = "";
       if (!file) return;
-      photos[name] = file;
-      preview.querySelector("img").src = URL.createObjectURL(file);
-      preview.hidden = false;
-      btn.textContent = BTN_AGAIN;
 
       var token = ++readToken;
       setStatus("busy", kind === "tire" ? "Reading barcode…" : "Reading serial…");
@@ -153,7 +138,7 @@
         .then(function (result) {
           if (token !== readToken) return;
           if (!result) {
-            setStatus("fail", "Couldn't read it from the photo — please type it in. The photo is still saved.");
+            setStatus("fail", "Couldn't read it from the photo — try again closer, or type it in.");
             return;
           }
           var current = input.value.trim().toUpperCase();
@@ -179,24 +164,14 @@
         .catch(function (e) {
           if (token !== readToken) return;
           console.error(e);
-          setStatus("fail", "Couldn't read it (no signal?) — please type it in. The photo is still saved.");
+          setStatus("fail", "Couldn't read it (no signal?) — please type it in.");
         });
-    });
-
-    preview.querySelector("button").addEventListener("click", function () {
-      readToken++;
-      delete photos[name];
-      preview.hidden = true;
-      status.hidden = true;
-      btn.textContent = BTN_IDLE;
     });
 
     field.resetSerial = function () {
       readToken++;
       autoFilled = null;
-      preview.hidden = true;
       status.hidden = true;
-      btn.textContent = BTN_IDLE;
     };
   });
 
@@ -310,7 +285,6 @@
   function resetForm() {
     form.reset();
     sig.clear();
-    photos = {};
     pendingId = null;
     document.querySelectorAll(".serial").forEach(function (f) { f.resetSerial(); });
     document.querySelectorAll(".hint-warn").forEach(function (w) { w.hidden = true; });
@@ -391,27 +365,6 @@
     return pendingId.id;
   }
 
-  // Phone photos are 3–12 MB; shrink to something that uploads on one bar of signal.
-  var PHOTO_MAX_PX = 1600;
-
-  function compressPhoto(file) {
-    return new Promise(function (resolve, reject) {
-      var url = URL.createObjectURL(file);
-      var img = new Image();
-      img.onload = function () {
-        var scale = Math.min(1, PHOTO_MAX_PX / Math.max(img.naturalWidth, img.naturalHeight));
-        var canvas = document.createElement("canvas");
-        canvas.width = Math.round(img.naturalWidth * scale);
-        canvas.height = Math.round(img.naturalHeight * scale);
-        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
-        URL.revokeObjectURL(url);
-        resolve(base64File(canvas.toDataURL("image/jpeg", 0.8)));
-      };
-      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error("Couldn't read photo")); };
-      img.src = url;
-    });
-  }
-
   function base64File(dataUrl) {
     var comma = dataUrl.indexOf(",");
     return { mimeType: dataUrl.slice(5, dataUrl.indexOf(";")), data: dataUrl.slice(comma + 1) };
@@ -458,30 +411,9 @@
       submissionId: submissionIdFor(v("kartNo")),
       honeypot: form.elements.website.value,
       fields: fields,
-      files: {
-        "Chassis Serial Photo": photos.chassisSerial || null,
-        "Engine 1 Serial Photo": photos.engine1Serial || null,
-        "Engine 2 Serial Photo": twoEngines ? photos.engine2Serial || null : null,
-        "Front Tire 1 Photo": photos.tireFront1 || null,
-        "Front Tire 2 Photo": photos.tireFront2 || null,
-        "Rear Tire 1 Photo": photos.tireRear1 || null,
-        "Rear Tire 2 Photo": photos.tireRear2 || null,
-        "Signature": sig.toDataURL(),
-      },
+      // Only the signature is stored; serial photos never leave the phone.
+      files: { "Signature": base64File(sig.toDataURL()) },
     };
-  }
-
-  // Replaces File objects / data URLs in payload.files with { mimeType, data }.
-  function encodeFiles(payload) {
-    var labels = Object.keys(payload.files);
-    return Promise.all(labels.map(function (label) {
-      var f = payload.files[label];
-      if (!f) return null;
-      return typeof f === "string" ? base64File(f) : compressPhoto(f);
-    })).then(function (encoded) {
-      labels.forEach(function (label, i) { payload.files[label] = encoded[i]; });
-      return payload;
-    });
   }
 
   function send(payload) {
@@ -520,8 +452,7 @@
     var btn = $("submitBtn");
     btn.disabled = true;
     btn.textContent = "Sending…";
-    encodeFiles(payload)
-      .then(send)
+    send(payload)
       .then(function () { showConfirmation(payload); })
       .catch(function (ex) {
         console.error(ex);
