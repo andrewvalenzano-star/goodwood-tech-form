@@ -498,8 +498,9 @@
       .then(function () { btn.disabled = false; }, pdfFailed);
   }
 
+  // pendingId is deliberately kept until "Start another form" (resetForm), so a
+  // retry of this same form can never become a second row.
   function showConfirmation(p) {
-    pendingId = null;
     lastSubmission = p;
     preparePdf();
     $("confirmId").textContent = p.submissionId;
