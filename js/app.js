@@ -467,11 +467,34 @@
   });
 
   var lastSubmission = null; // kept only for the PDF button; gone when the page closes
+  var pdfFile = null;
+
+  function preparePdf() {
+    var btn = $("downloadPdf");
+    var sub = lastSubmission;
+    pdfFile = null;
+    btn.disabled = true;
+    btn.textContent = "Preparing PDF…";
+    $("pdfError").hidden = true;
+    window.TechPdf.prepare(sub)
+      .then(function (file) {
+        if (sub !== lastSubmission) return; // moved on to a new form meanwhile
+        pdfFile = file;
+        btn.textContent = "Download PDF copy";
+      })
+      .catch(function (ex) {
+        console.error(ex);
+        $("pdfError").textContent = "Couldn't make the PDF (no signal?). Tap the button to try again — your form was still submitted.";
+        $("pdfError").hidden = false;
+        btn.textContent = "Try PDF again";
+      })
+      .then(function () { btn.disabled = false; });
+  }
 
   function showConfirmation(p) {
     pendingId = null;
     lastSubmission = p;
-    $("pdfError").hidden = true;
+    preparePdf();
     $("confirmId").textContent = p.submissionId;
     $("confirmSummary").textContent = p.fields["Driver Name"] + " · #" + p.fields["Kart No"] + " · " + p.fields["Class"];
     form.hidden = true;
@@ -481,24 +504,18 @@
   }
 
   $("downloadPdf").addEventListener("click", function () {
-    var btn = $("downloadPdf");
-    btn.disabled = true;
-    btn.textContent = "Making PDF…";
-    $("pdfError").hidden = true;
-    window.TechPdf.download(lastSubmission)
-      .catch(function (ex) {
-        console.error(ex);
-        $("pdfError").textContent = "Couldn't make the PDF (no signal?). Try again in a moment — your form was still submitted.";
-        $("pdfError").hidden = false;
-      })
-      .then(function () {
-        btn.disabled = false;
-        btn.textContent = "Download PDF copy";
-      });
+    if (!pdfFile) { preparePdf(); return; }
+    // No waiting before save(): iPhone only allows it as a direct response to the tap.
+    window.TechPdf.save(pdfFile).catch(function (ex) {
+      console.error(ex);
+      $("pdfError").textContent = "Couldn't save the PDF. Please try again.";
+      $("pdfError").hidden = false;
+    });
   });
 
   $("newForm").addEventListener("click", function () {
     lastSubmission = null;
+    pdfFile = null;
     resetForm();
     $("confirmation").hidden = true;
     form.hidden = false;

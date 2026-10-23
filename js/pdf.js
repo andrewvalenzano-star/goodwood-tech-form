@@ -35,7 +35,7 @@
 
   function build(jsPDF, sub, logo) {
     var f = sub.fields;
-    var doc = new jsPDF({ unit: "pt", format: "letter" });
+    var doc = new jsPDF({ unit: "pt", format: "letter", compress: true });
     var y = 0;
 
     function ensure(h) {
@@ -48,9 +48,7 @@
       doc.setFont("helvetica", "bold").setFontSize(12).setTextColor(0);
       doc.text(text, M, y);
       y += 4;
-      // jsPDF skips re-sending a fill colour it thinks is current, but text colour
-      // changes share that state, so force the change.
-      doc.setFillColor(255, 255, 255).setFillColor.apply(doc, RED).rect(M, y, PAGE_W - 2 * M, 1.5, "F");
+      doc.setFillColor.apply(doc, RED).rect(M, y, PAGE_W - 2 * M, 1.5, "F");
       y += 13;
     }
 
@@ -151,11 +149,36 @@
     return doc;
   }
 
+  var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+  // iPhone Safari only hands over a file in direct response to a tap, so the PDF
+  // is built ahead of time (prepare) and handed over instantly on tap (save).
   window.TechPdf = {
-    download: function (sub) {
+    prepare: function (sub) {
       return Promise.all([loadLib(), loadImage("img/logo.png")]).then(function (r) {
-        build(r[0], sub, r[1]).save("Goodwood-Tech-" + sub.submissionId + ".pdf");
+        var blob = build(r[0], sub, r[1]).output("blob");
+        return new File([blob], "Goodwood-Tech-" + sub.submissionId + ".pdf", { type: "application/pdf" });
       });
+    },
+
+    // Call straight from the click handler, with no waiting before it.
+    save: function (file) {
+      if (isIOS && navigator.canShare && navigator.canShare({ files: [file] })) {
+        // Share sheet: Save to Files, Print, Mail, etc.
+        return navigator.share({ files: [file], title: file.name }).catch(function (e) {
+          if (e.name !== "AbortError") throw e; // closing the sheet isn't an error
+        });
+      }
+      var url = URL.createObjectURL(file);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+      return Promise.resolve();
     },
   };
 })();
