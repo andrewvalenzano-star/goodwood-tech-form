@@ -255,6 +255,8 @@ blockquote {
   word-break: break-all;
 }
 .confirm-sub { color: var(--muted); }
-.confirm .btn-secondary { margin-top: 16px; }
+.confirm .btn-primary { margin-top: 16px; }
+.confirm .btn-secondary { margin-top: 12px; }
+.pdf-error { color: var(--err); font-weight: 600; font-size: 0.95rem; }
 
 .hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }

@@ -104,7 +104,7 @@ Each item is a checkbox the submitter must check to submit. The criterion text f
 - **Backend (recommended):** a Google Apps Script web endpoint attached to Dan's Sheet. Form POSTs JSON → script appends the row and saves the signature image to Drive. No server to run, no cost, and the data lives in Dan's own Google account — he can revoke access anytime. That ownership point matters for getting a busy track operator to say yes.
 - **Duplicate handling:** submitting again with same event date + kart number flags rather than silently duplicating ("2 submissions" note in Sheet); Dan uses the latest.
 - **No printable sheet for tech** (decided Oct 21) — Dan works from the Sheet.
-- **Submitter's own PDF:** after a successful submission, the confirmation screen offers **"Download PDF"** — a copy of the completed form for the submitter's own records (all fields, checklist, declaration, signature, timestamp, submission ID). Generated on the phone from the submitted data, so it works even if the submission is still queued offline.
+- **Submitter's own PDF** (built Oct 23; one Letter page with logo, all fields, checklist, declaration, signature): after a successful submission, the confirmation screen offers **"Download PDF"** — a copy of the completed form for the submitter's own records (all fields, checklist, declaration, signature, timestamp, submission ID). Generated on the phone from the submitted data, so it works even if the submission is still queued offline.
 
 ## 7. Frontend, hosting, domain
 

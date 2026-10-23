@@ -466,8 +466,12 @@
       });
   });
 
+  var lastSubmission = null; // kept only for the PDF button; gone when the page closes
+
   function showConfirmation(p) {
     pendingId = null;
+    lastSubmission = p;
+    $("pdfError").hidden = true;
     $("confirmId").textContent = p.submissionId;
     $("confirmSummary").textContent = p.fields["Driver Name"] + " · #" + p.fields["Kart No"] + " · " + p.fields["Class"];
     form.hidden = true;
@@ -476,7 +480,25 @@
     window.scrollTo(0, 0);
   }
 
+  $("downloadPdf").addEventListener("click", function () {
+    var btn = $("downloadPdf");
+    btn.disabled = true;
+    btn.textContent = "Making PDF…";
+    $("pdfError").hidden = true;
+    window.TechPdf.download(lastSubmission)
+      .catch(function (ex) {
+        console.error(ex);
+        $("pdfError").textContent = "Couldn't make the PDF (no signal?). Try again in a moment — your form was still submitted.";
+        $("pdfError").hidden = false;
+      })
+      .then(function () {
+        btn.disabled = false;
+        btn.textContent = "Download PDF copy";
+      });
+  });
+
   $("newForm").addEventListener("click", function () {
+    lastSubmission = null;
     resetForm();
     $("confirmation").hidden = true;
     form.hidden = false;
